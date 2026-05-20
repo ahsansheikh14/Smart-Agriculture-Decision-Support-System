@@ -6,6 +6,7 @@ Phase 3: Decision Tree | Phase 4: KMeans | Phase 5: Linear Regression
 import sys
 from pathlib import Path
 
+import joblib
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
@@ -28,6 +29,7 @@ from preprocessing import prepare_data, FEATURE_COLUMNS
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results"
+MODELS_DIR = PROJECT_ROOT / "models"
 
 
 def train_decision_tree():
@@ -190,5 +192,46 @@ def train_linear_regression():
     return yield_model
 
 
+def train_and_save_all(n_clusters=4):
+    """
+    Phase 6: Train all 3 models once and save to models/ folder with joblib.
+
+    GUI will load these files — no need to re-train every time the app opens.
+    """
+    print("=== Phase 6: Train & Save All Models ===\n")
+
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    data = prepare_data()
+
+    # --- 1) Decision Tree ---
+    crop_model = DecisionTreeClassifier(max_depth=10, random_state=42)
+    crop_model.fit(data["X_train"], data["y_crop_train"])
+    crop_path = MODELS_DIR / "crop_model.joblib"
+    joblib.dump(crop_model, crop_path)
+    print(f"Saved crop model      -> {crop_path}")
+
+    # --- 2) KMeans (needs scaler for new user inputs in GUI) ---
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    kmeans.fit(data["X_scaled"])
+    kmeans_path = MODELS_DIR / "kmeans_model.joblib"
+    scaler_path = MODELS_DIR / "scaler.joblib"
+    joblib.dump(kmeans, kmeans_path)
+    joblib.dump(data["scaler"], scaler_path)
+    print(f"Saved KMeans model    -> {kmeans_path}")
+    print(f"Saved scaler          -> {scaler_path}")
+
+    # --- 3) Linear Regression ---
+    yield_model = LinearRegression()
+    yield_model.fit(data["X_train_r"], data["y_yield_train"])
+    yield_path = MODELS_DIR / "yield_model.joblib"
+    joblib.dump(yield_model, yield_path)
+    print(f"Saved yield model     -> {yield_path}")
+
+    print("\nAll models saved successfully.")
+    print("Next: Phase 7 GUI will load these with joblib.load() from utils.py")
+
+    return crop_model, kmeans, yield_model, data["scaler"]
+
+
 if __name__ == "__main__":
-    train_linear_regression()
+    train_and_save_all()
