@@ -8,14 +8,19 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
+from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
+    mean_absolute_error,
+    mean_squared_error,
     precision_score,
+    r2_score,
     recall_score,
     silhouette_score,
 )
+import numpy as np
 
 # Allow import of preprocessing.py from the same src/ folder
 sys.path.append(str(Path(__file__).resolve().parent))
@@ -131,5 +136,59 @@ def train_kmeans(n_clusters=4):
     return kmeans
 
 
+def train_linear_regression():
+    """
+    Train Linear Regression to predict yield (a number) from soil + weather.
+
+    Target 'yield' was created in preprocessing.py (not in original CSV).
+    """
+    print("=== Phase 5: Linear Regression (Yield Prediction) ===\n")
+
+    data = prepare_data()
+    X_train = data["X_train_r"]
+    X_test = data["X_test_r"]
+    y_train = data["y_yield_train"]
+    y_test = data["y_yield_test"]
+
+    # 1) Create and train model
+    yield_model = LinearRegression()
+    yield_model.fit(X_train, y_train)  # <-- training
+
+    # 2) Predict yield on test set
+    y_pred = yield_model.predict(X_test)
+
+    # 3) Metrics
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+    print(f"RMSE : {rmse:.4f}  (lower is better — avg prediction error)")
+    print(f"MAE  : {mae:.4f}   (lower is better — average absolute error)")
+    print(f"R²   : {r2:.4f}    (closer to 1.0 is better — how much variance is explained)")
+
+    # 4) Residual plot
+    # Residual = actual yield - predicted yield (mistake of each prediction)
+    residuals = y_test - y_pred
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    plot_path = RESULTS_DIR / "residual_plot.png"
+
+    plt.figure(figsize=(8, 5))
+    plt.scatter(y_pred, residuals, alpha=0.5, color="steelblue", edgecolors="k", linewidths=0.2)
+    plt.axhline(y=0, color="red", linestyle="--", label="Zero error line")
+    plt.title("Linear Regression - Residual Plot")
+    plt.xlabel("Predicted yield")
+    plt.ylabel("Residual (Actual - Predicted)")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.close()
+
+    print(f"\nResidual plot saved to: {plot_path}")
+
+    return yield_model
+
+
 if __name__ == "__main__":
-    train_kmeans()
+    train_linear_regression()
